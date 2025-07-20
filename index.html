@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>✨ Quiz Master V2</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Vue & Bootstrap & Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+    rel="stylesheet"
+  />
+
+  <style>
+    body, html {
+      margin:0; padding:0; height:100%; overflow:hidden;
+      font-family:'Segoe UI',sans-serif;
+      background:url("bg_v2.png") no-repeat center center fixed;
+      background-size:cover; position:relative;
+    }
+    body::before {
+      content:""; position:absolute; top:0; left:0; right:0; bottom:0;
+      background:linear-gradient(135deg,rgba(30,30,60,0.8),rgba(0,0,0,0.8));
+      z-index:0;
+    }
+    #app {
+      position:relative; z-index:1;
+      height:100%; display:flex;
+      align-items:center; justify-content:center;
+    }
+    .card-box {
+      background:rgba(255,255,255,0.2);
+      border-radius:20px;
+      box-shadow:0 12px 40px rgba(0,0,0,0.4);
+      backdrop-filter:blur(10px);
+      -webkit-backdrop-filter:blur(10px);
+      border:1px solid rgba(255,255,255,0.3);
+      padding:3rem; width:100%; max-width:600px;
+      color:#fff; transition:transform 0.3s ease;
+      max-height:90vh; overflow-y:auto;
+    }
+    .card-box:hover { transform:translateY(-5px) scale(1.02); }
+    h2,h4 {
+      margin-bottom:2rem; font-weight:600;
+      text-shadow:0 3px 8px rgba(0,0,0,0.6);
+    }
+    .form-control, .form-select {
+      background:rgba(255,255,255,0.9);
+      border:none; border-radius:12px;
+      padding:1rem; font-size:1rem;
+      margin-bottom:1.5rem; transition:box-shadow 0.3s;
+    }
+    .form-control:focus, .form-select:focus {
+      box-shadow:0 0 10px rgba(78,115,246,0.6);
+      outline:none;
+    }
+    .btn-custom {
+      background:linear-gradient(135deg,#6b73ff,#000dff);
+      color:#fff; border:none; border-radius:30px;
+      padding:1rem; font-size:1.2rem; font-weight:600;
+      width:100%; margin-top:1.5rem;
+      transition:transform 0.3s,box-shadow 0.3s,background 0.3s;
+      cursor:pointer;
+    }
+    .btn-custom:hover {
+      transform:translateY(-3px) scale(1.03);
+      box-shadow:0 8px 30px rgba(0,0,0,0.5);
+      background:linear-gradient(135deg,#4e60ff,#1200ff);
+    }
+    .toggle-link {
+      color:#FFD460; cursor:pointer;
+      font-weight:500; text-decoration:underline;
+      transition:color 0.3s;
+    }
+    .toggle-link:hover { color:#FFE28A; }
+
+    .message {
+      margin-top:1.5rem; font-weight:500;
+      font-size:1rem; text-align:center;
+    }
+    .message.success { color:#2ecc71; }
+    .message.error   { color:#ff6b6b; }
+
+    .field-error {
+      color:#ff6b6b; font-size:0.85rem;
+      margin-top:-1.25rem; margin-bottom:1.25rem;
+      text-align:left;
+    }
+
+    .question-block { margin-bottom:2rem; }
+    .question-block strong {
+      display:block; margin-bottom:0.75rem;
+      font-size:1.1rem; color:#fff;
+    }
+    .form-check-label { margin-left:0.5rem; font-size:1rem; color:#fff; }
+
+    .list-group-item {
+      background:rgba(255,255,255,0.1); border:none;
+      color:#fff; cursor:pointer; transition:background 0.3s;
+    }
+    .list-group-item:hover { background:rgba(255,255,255,0.2); }
+
+    .timer {
+      font-size:1.2rem; font-weight:600; text-align:right; margin-bottom:1rem;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <!-- LOGIN / REGISTER -->
+    <div v-if="view==='login' || view==='register'" class="card-box text-center">
+      <h2>✨ Quiz Master V2</h2>
+      <div v-if="view==='login'">
+        <input v-model="loginData.email"    class="form-control" placeholder="Email"    type="email">
+        <input v-model="loginData.password" class="form-control" placeholder="Password" type="password">
+        <button @click="login" class="btn-custom">Login</button>
+        <p style="margin-top:1rem;">
+          Don't have an account?
+          <span class="toggle-link" @click="view='register'">Register</span>
+        </p>
+      </div>
+      <div v-else>
+        <input v-model="registerData.full_name"     class="form-control" placeholder="Full Name"      type="text">
+        <div v-if="errors.full_name" class="field-error">{{errors.full_name}}</div>
+        <input v-model="registerData.email"         class="form-control" placeholder="Email"          type="email">
+        <div v-if="errors.email" class="field-error">{{errors.email}}</div>
+        <input v-model="registerData.password"      class="form-control" placeholder="Password"       type="password">
+        <div v-if="errors.password" class="field-error">{{errors.password}}</div>
+        <input v-model="registerData.qualification" class="form-control" placeholder="Qualification" type="text">
+        <div v-if="errors.qualification" class="field-error">{{errors.qualification}}</div>
+        <input v-model="registerData.dob"           class="form-control" placeholder="Date of Birth"  type="date">
+        <div v-if="errors.dob" class="field-error">{{errors.dob}}</div>
+        <button @click="register" class="btn-custom">Sign Up</button>
+        <p style="margin-top:1rem;">
+          <span class="toggle-link" @click="view='login'">Back to login</span>
+        </p>
+      </div>
+      <div v-if="message" :class="['message', isError?'error':'success']">{{message}}</div>
+    </div>
+
+    <!-- DASHBOARD -->
+    <div v-if="view==='dashboard'" class="card-box">
+      <h2>Welcome!</h2>
+      <h4>Select a Subject</h4>
+      <ul class="list-group">
+        <li v-for="s in subjects" :key="s.id" class="list-group-item" @click="selectSubject(s)">
+          {{s.name}}
+        </li>
+      </ul>
+      <button @click="goHistory" class="btn-custom mt-3">My Attempts</button>
+    </div>
+
+    <!-- CHAPTERS -->
+    <div v-if="view==='chapters'" class="card-box">
+      <h2>📚 Chapters</h2>
+      <h4>Select a Chapter</h4>
+      <ul class="list-group">
+        <li v-for="c in chapters" :key="c.id" class="list-group-item" @click="selectChapter(c)">
+          {{c.name}}
+        </li>
+      </ul>
+    </div>
+
+    <!-- QUIZ LIST -->
+    <div v-if="view==='quiz' && !quizQuestions.length" class="card-box">
+      <h4>🗓️ Select a Quiz</h4>
+      <ul class="list-group">
+        <li v-for="q in quizzes" :key="q.id" class="list-group-item" @click="selectQuiz(q)">
+          Quiz #{{q.id}} – {{q.date}} ({{q.duration}})
+        </li>
+      </ul>
+    </div>
+
+    <!-- QUIZ QUESTIONS + TIMER -->
+    <div v-if="view==='quiz' && quizQuestions.length" class="card-box">
+      <div class="timer">Time Left: {{ formatTime(timeRemaining) }}</div>
+      <h4>📘 Quiz Time!</h4>
+      <div v-for="(q,idx) in quizQuestions" :key="q.id" class="question-block">
+        <strong>{{idx+1}}. {{q.question_statement}}</strong>
+        <div v-for="opt in q.options" :key="opt" class="form-check">
+          <input class="form-check-input" type="radio"
+                 :name="'q'+q.id" :value="opt" v-model="userAnswers[q.id]">
+          <label class="form-check-label">{{opt}}</label>
+        </div>
+      </div>
+      <button @click="submitQuiz" class="btn-custom">Submit Quiz</button>
+      <div v-if="quizResult" class="message success">{{quizResult}}</div>
+      <div v-if="quizResult" class="mt-4 d-flex justify-content-between">
+        <button @click="retryQuiz" class="btn-custom" style="width:48%">Retake Quiz</button>
+        <button @click="view='dashboard'" class="btn-custom" style="width:48%">Back</button>
+      </div>
+    </div>
+
+    <!-- HISTORY & CHART -->
+    <div v-if="view==='history'" class="card-box">
+      <h2>📊 My Quiz History</h2>
+      <canvas id="historyChart" style="max-width:100%;"></canvas>
+      <table class="table table-sm table-striped text-white mt-4">
+        <thead>
+          <tr>
+            <th>Quiz ID</th><th>Subject</th><th>Chapter</th><th>Date</th><th>Score</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="h in history" :key="h.score_id">
+            <td>{{h.quiz_id}}</td>
+            <td>{{h.subject}}</td>
+            <td>{{h.chapter}}</td>
+            <td>{{h.date}}</td>
+            <td>{{h.score}}</td>
+          </tr>
+          <tr v-if="!history.length">
+            <td colspan="5" class="text-center text-white-50">No attempts yet.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <button @click="exportHistoryEmail" class="btn-custom mt-2">
+        Email My Attempts as CSV
+      </button>
+      <button @click="downloadCSV" class="btn-custom mt-2">
+        Download My Attempts as CSV
+      </button>
+      <button @click="view='dashboard'" class="btn-custom mt-3">Back</button>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = 'https://66afec29-6c20-4baf-8a1a-f6cee1443d8a-00-3pmv7k9xm73vd.pike.replit.dev';
+
+    new Vue({
+      el: '#app',
+      data: {
+        view:'login', message:'', isError:false, userId:null,
+        loginData:{email:'',password:''},
+        registerData:{full_name:'',email:'',password:'',qualification:'',dob:''},
+        errors:{},
+        subjects:[], chapters:[], quizzes:[],
+        selectedSubject:'', selectedChapter:'', quizId:null,
+        quizQuestions:[], userAnswers:{}, quizResult:'',
+        history:[], historyChart:null,
+        timeRemaining:0, timerInterval:null
+      },
+      methods:{
+        /* AUTH */
+        async login(){
+          this.message=''; this.isError=false;
+          if(!this.loginData.email||!this.loginData.password){
+            this.message='Please fill both fields'; this.isError=true; return;
+          }
+          try{
+            const r=await fetch(`${API_BASE}/login`,{
+              method:'POST',
+              headers:{'Content-Type':'application/json'},
+              body:JSON.stringify(this.loginData)
+            });
+            const d=await r.json();
+            if(r.ok&&d.user){
+              this.userId=d.user.id;
+              await this.loadSubjects();
+              this.view='dashboard';
+            } else {
+              this.message=d.error||'Login failed'; this.isError=true;
+            }
+          }catch{
+            this.message='Network error'; this.isError=true;
+          }
+        },
+        async register(){
+          this.message=''; this.isError=false; this.errors={};
+          try{
+            const r=await fetch(`${API_BASE}/register`,{
+              method:'POST',
+              headers:{'Content-Type':'application/json'},
+              body:JSON.stringify(this.registerData)
+            });
+            const d=await r.json();
+            if(r.ok){
+              this.message='Registered! Please login.'; this.isError=false;
+              this.view='login';
+            } else {
+              this.message=d.error||'Registration failed'; this.isError=true;
+            }
+          }catch{
+            this.message='Network error'; this.isError=true;
+          }
+        },
+
+        /* SUBJECTS */
+        async loadSubjects(){
+          try{
+            const r=await fetch(`${API_BASE}/subjects`);
+            const d=await r.json();
+            this.subjects=d.subjects||[];
+          }catch{
+            this.message='Could not load subjects'; this.isError=true;
+          }
+        },
+        selectSubject(s){
+          this.selectedSubject=s.id;
+          this.loadChapters();
+          this.view='chapters';
+        },
+
+        /* CHAPTERS */
+        async loadChapters(){
+          this.chapters=[]; this.quizzes=[]; this.quizQuestions=[];
+          try{
+            const r=await fetch(`${API_BASE}/subjects/${this.selectedSubject}/chapters`);
+            const d=await r.json();
+            this.chapters=d.chapters||[];
+          }catch{
+            this.message='Cannot load chapters'; this.isError=true;
+          }
+        },
+        selectChapter(c){
+          this.selectedChapter=c.id;
+          this.loadQuizzes();
+          this.view='quiz';
+        },
+
+        /* QUIZZES */
+        async loadQuizzes(){
+          this.quizzes=[]; this.quizQuestions=[];
+          try{
+            const r=await fetch(`${API_BASE}/chapters/${this.selectedChapter}/quizzes`);
+            const d=await r.json();
+            this.quizzes=d.quizzes.map(q=>({
+              id:q.id, date:q.date, duration:q.duration
+            }));
+          }catch{
+            this.message='Cannot load quizzes'; this.isError=true;
+          }
+        },
+        selectQuiz(q){
+          this.quizId=q.id;
+          this.startTimer(q.duration);
+          this.loadQuiz();
+        },
+
+        /* TIMER & QUIZ */
+        startTimer(duration){
+          const [hh,mm]=duration.split(':').map(n=>parseInt(n,10));
+          this.timeRemaining=hh*3600+mm*60;
+          clearInterval(this.timerInterval);
+          this.timerInterval=setInterval(()=>{
+            if(this.timeRemaining>0){
+              this.timeRemaining--;
+            } else {
+              clearInterval(this.timerInterval);
+              this.submitQuiz();
+            }
+          },1000);
+        },
+        formatTime(sec){
+          const m=Math.floor(sec/60), s=sec%60;
+          return String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+        },
+        async loadQuiz(){
+          this.quizQuestions=[]; this.userAnswers={}; this.quizResult='';
+          try{
+            const r=await fetch(`${API_BASE}/quiz/${this.quizId}`);
+            const d=await r.json();
+            this.quizQuestions=d.questions||[];
+          }catch{
+            this.message='Cannot load questions'; this.isError=true;
+          }
+        },
+        async submitQuiz(){
+          clearInterval(this.timerInterval);
+          const answers=Object.entries(this.userAnswers).map(([qid,sel])=>({
+            question_id:parseInt(qid), selected:sel
+          }));
+          try{
+            const r=await fetch(`${API_BASE}/quiz/submit`,{
+              method:'POST',
+              headers:{'Content-Type':'application/json'},
+              body:JSON.stringify({user_id:this.userId,quiz_id:this.quizId,answers})
+            });
+            const d=await r.json();
+            this.quizResult=`You scored ${d.score} of ${d.total_questions}`;
+          }catch{
+            this.quizResult='Error submitting quiz';
+          }
+        },
+        retryQuiz(){
+          this.userAnswers={}; this.quizResult='';
+          clearInterval(this.timerInterval);
+        },
+
+        /* HISTORY & CHART */
+        goHistory(){
+          this.loadHistory();
+          this.view='history';
+        },
+        async loadHistory(){
+          try{
+            const r=await fetch(`${API_BASE}/user/${this.userId}/scores`);
+            const d=await r.json();
+            this.history=d.history||[];
+            this.$nextTick(this.renderChart);
+          }catch{
+            this.message='Could not load history'; this.isError=true;
+          }
+        },
+        renderChart(){
+          const ctx=document.getElementById('historyChart').getContext('2d');
+          const labels=this.history.map(h=>h.date);
+          const data=this.history.map(h=>h.score);
+          if(this.historyChart){
+            this.historyChart.data.labels=labels;
+            this.historyChart.data.datasets[0].data=data;
+            this.historyChart.update();
+          } else {
+            this.historyChart=new Chart(ctx,{
+              type:'bar',
+              data:{labels,datasets:[{label:'Score',data,backgroundColor:'rgba(107,115,255,0.6)'}]},
+              options:{responsive:true,scales:{y:{beginAtZero:true,stepSize:1}}}
+            });
+          }
+        },
+
+        /* EMAIL EXPORT */
+        async exportHistoryEmail(){
+          this.message=''; this.isError=false;
+          try{
+            const r=await fetch(`${API_BASE}/export-user-scores`,{
+              method:'POST',
+              headers:{'Content-Type':'application/json'},
+              body:JSON.stringify({user_id:this.userId})
+            });
+            const d=await r.json();
+            if(r.ok){
+              this.message=`Export started (task ${d.task_id}). Check your email when it’s ready.`;
+            } else {
+              this.message=d.error||'Export failed'; this.isError=true;
+            }
+          }catch{
+            this.message='Network error'; this.isError=true;
+          }
+        },
+
+        /* DIRECT DOWNLOAD */
+        downloadCSV(){
+          window.location=`${API_BASE}/user/${this.userId}/export`;
+        }
+      }
+    });
+  </script>
+</body>
+</html>

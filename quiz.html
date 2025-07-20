@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>✨ Quiz Master V2</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- Vue.js & Bootstrap -->
+  <script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <style>
+    html, body { margin:0; padding:0; height:100%; }
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #4e54c8, #8f94fb);
+      overflow: hidden;
+    }
+    #app { height:100%; display:flex; align-items:center; justify-content:center; }
+
+    .card-box {
+      background: rgba(255,255,255,0.15);
+      border-radius: 24px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      padding: 2.5rem;
+      width: 100%; max-width: 480px;
+      color: #fff;
+      transition: transform 0.3s ease;
+    }
+    .card-box:hover {
+      transform: translateY(-5px) scale(1.02);
+    }
+
+    h2, h4 {
+      margin-bottom: 1.5rem;
+      font-weight: 600;
+      text-shadow: 0 3px 8px rgba(0,0,0,0.6);
+    }
+
+    .form-control {
+      background: rgba(255,255,255,0.9);
+      border: none;
+      border-radius: 12px;
+      padding: 0.85rem 1rem;
+      font-size: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .form-control:focus {
+      box-shadow: 0 0 8px rgba(78,115,246,0.6);
+      outline: none;
+    }
+
+    .btn-custom {
+      background: linear-gradient(135deg, #ff758c, #ff7eb3);
+      color: #fff;
+      border: none;
+      padding: 0.85rem;
+      font-size: 1.2rem;
+      font-weight: 600;
+      border-radius: 30px;
+      width: 100%;
+      margin-top: 1rem;
+    }
+
+    .btn-custom:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+    }
+
+    .toggle-link {
+      color: #FFD460;
+      cursor: pointer;
+      font-weight: 500;
+      text-decoration: underline;
+    }
+
+    .message {
+      margin-top: 1rem;
+      font-weight: 500;
+      text-align: center;
+    }
+
+    .message.success { color: #2ecc71; }
+    .message.error   { color: #ff6b6b; }
+
+    .question-block { margin-bottom: 1.8rem; }
+    .question-block strong { display:block; margin-bottom:0.8rem; font-size:1.1rem; }
+    .form-check-label { margin-left:0.5rem; font-size:1rem; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <!-- Auth -->
+    <div v-if="view !== 'quiz'" class="card-box text-center">
+      <h2>Quiz Master V2</h2>
+
+      <!-- Login Form -->
+      <div v-if="view==='login'">
+        <input v-model="loginData.email" class="form-control" placeholder="Email" type="email">
+        <input v-model="loginData.password" class="form-control" placeholder="Password" type="password">
+        <button @click="login" class="btn-custom">Login</button>
+        <p style="margin-top:1rem;">Don't have an account? <span class="toggle-link" @click="switchView('register')">Register</span></p>
+      </div>
+
+      <!-- Registration Form -->
+      <div v-else>
+        <input v-model="registerData.full_name" class="form-control" placeholder="Full Name" type="text">
+        <input v-model="registerData.email" class="form-control" placeholder="Email" type="email">
+        <input v-model="registerData.password" class="form-control" placeholder="Password" type="password">
+        <input v-model="registerData.qualification" class="form-control" placeholder="Qualification" type="text">
+        <input v-model="registerData.dob" class="form-control" placeholder="Date of Birth" type="date">
+        <button @click="register" class="btn-custom">Sign Up</button>
+        <p style="margin-top:1rem;">Already have an account? <span class="toggle-link" @click="switchView('login')">Login</span></p>
+      </div>
+
+      <div v-if="message" :class="['message', isError ? 'error' : 'success']">{{ message }}</div>
+    </div>
+
+    <!-- Quiz Interface -->
+    <div v-if="view==='quiz'" class="card-box">
+      <h4>Quiz Time!</h4>
+
+      <div v-if="quizQuestions.length">
+        <div v-for="(q, idx) in quizQuestions" :key="q.id" class="question-block">
+          <strong>{{ idx+1 }}. {{ q.question_statement }}</strong>
+          <div v-for="opt in q.options" :key="opt" class="form-check">
+            <input class="form-check-input" type="radio" :name="'q'+q.id" :value="opt" v-model="userAnswers[q.id]">
+            <label class="form-check-label">{{ opt }}</label>
+          </div>
+        </div>
+        <button @click="submitQuiz" class="btn-custom">Submit Quiz</button>
+      </div>
+
+      <div v-else class="message">Loading questions…</div>
+      <div v-if="quizResult" class="message success">{{ quizResult }}</div>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = 'https://66afec29-6c20-4baf-8a1a-f6cee1443d8a-00-3pmv7k9xm73vd.pike.replit.dev';
+
+    new Vue({
+      el: '#app',
+      data: {
+        view: 'login',
+        message: '',
+        isError: false,
+        loginData: { email: '', password: '' },
+        registerData: { full_name: '', email: '', password: '', qualification: '', dob: '' },
+        userId: null,
+        quizId: 1,
+        quizQuestions: [],
+        userAnswers: {},
+        quizResult: ''
+      },
+      methods: {
+        switchView(v) {
+          this.view = v;
+          this.message = '';
+          this.isError = false;
+        },
+        async login() {
+          if (!this.loginData.email || !this.loginData.password) {
+            this.message = 'Please fill in both fields';
+            this.isError = true;
+            return;
+          }
+          try {
+            const res = await fetch(`${API_BASE}/login`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(this.loginData)
+            });
+            const d = await res.json();
+            if (res.ok && d.user) {
+              this.userId = d.user.id;
+              await this.loadQuiz();
+              this.switchView('quiz');
+            } else {
+              this.message = d.error || 'Login failed';
+              this.isError = true;
+            }
+          } catch (e) {
+            console.error(e);
+            this.message = 'Server error during login';
+            this.isError = true;
+          }
+        },
+        async register() {
+          const rd = this.registerData;
+          if (!rd.full_name || !rd.email || !rd.password || !rd.qualification || !rd.dob) {
+            this.message = 'All fields are required';
+            this.isError = true;
+            return;
+          }
+          try {
+            const res = await fetch(`${API_BASE}/register`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(rd)
+            });
+            const d = await res.json();
+            if (res.ok) {
+              this.message = 'Registered! Please login.';
+              this.isError = false;
+              this.switchView('login');
+            } else {
+              this.message = d.error || 'Registration failed';
+              this.isError = true;
+            }
+          } catch (e) {
+            console.error(e);
+            this.message = 'Server error during registration';
+            this.isError = true;
+          }
+        },
+        async loadQuiz() {
+          try {
+            const res = await fetch(`${API_BASE}/quiz/${this.quizId}`);
+            const d = await res.json();
+            this.quizQuestions = d.questions || [];
+            this.userAnswers = {};
+            this.quizResult = '';
+          } catch (e) {
+            console.error(e);
+            this.message = 'Failed to load quiz';
+            this.isError = true;
+          }
+        },
+        async submitQuiz() {
+          const answers = Object.entries(this.userAnswers).map(([qid, sel]) => ({
+            question_id: parseInt(qid),
+            selected: sel
+          }));
+          try {
+            const res = await fetch(`${API_BASE}/quiz/submit`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                user_id: this.userId,
+                quiz_id: this.quizId,
+                answers
+              })
+            });
+            const d = await res.json();
+            this.quizResult = `You scored ${d.score} of ${d.total_questions}`;
+          } catch (e) {
+            console.error(e);
+            this.quizResult = 'Error submitting quiz';
+          }
+        }
+      }
+    });
+  </script>
+</body>
+</html>
